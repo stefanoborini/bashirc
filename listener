@@ -1,0 +1,44 @@
+host='212.41.202.39'
+
+
+while read string
+do
+first=`echo $string|cut --delimiter=' ' --fields 1`
+second=`echo $string|cut --delimiter=' ' --fields 2`
+third=`echo $string|cut --delimiter=' ' --fields 3`
+remaining=`echo $string|cut --delimiter=' ' --fields 4-`
+if [ $first = "PING" ]
+then
+	echo "PONG $host" >>./pippo
+fi
+
+case $second in
+	JOIN ) echo "$first Joined the channel"
+		;;
+	PART ) echo "$first leaved the channel"
+		;;
+	QUIT )
+		echo "$first has quit IRC"
+		;;
+	PRIVMSG )
+		nick=`echo $first|cut -b2-15 |cut --delimiter='!' -f1`
+		if [ `echo $third|cut -b1` = '#' ]
+		then
+		echo -e "\033[32m$nick says \033[0m$remaining"
+		else
+		echo -e "\a\033[1m$nick tells you \033[0m$remaining"
+		fi
+		;;
+	NICK )
+		nick=`echo $first|cut -b2-15 |cut --delimiter='!' -f1`
+		echo -e "\033[33m$nick -> $remaining"
+		;;
+	MODE )
+	* )
+		echo "$string"
+		;;
+esac
+
+		
+
+done

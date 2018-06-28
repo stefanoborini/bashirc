@@ -1,0 +1,141 @@
+#!/bin/bash
+
+>./pippo
+if [ $# -lt 3 ]
+then
+echo "Usage : $0 <nick> <irc host> <port>"
+exit 0
+fi
+ 
+exec tail -f pippo |nc $2 $3 |./listener &
+echo "USER $1 blah blah : blah" >>./pippo
+echo "NICK $1" >>./pippo
+while :
+do
+read string
+if test "$string" 
+then
+comando=`echo $string | cut --delimiter=' ' --fields=1`
+case $comando in
+	.join )
+		if [ -n "$curchannel" ]
+		then
+			echo "PART $curchannel :changing channel" >>./pippo
+		fi
+		channel=`echo $string | cut --delimiter=' ' --fields=2`
+		echo "JOIN $channel" >>./pippo
+		curchannel=$channel
+		;;
+	.quit )
+		temp=`echo $string |cut --delimiter=' ' --fields=2-`
+		echo "QUIT :$temp" >>./pippo
+		exit 0
+		;;
+	.tell )
+		tizio=`echo $string | cut --delimiter=' ' --fields=2`
+		testo=`echo $string |cut --delimiter=' ' --fields=3-`
+		echo "PRIVMSG $tizio :$testo" >>./pippo
+		;;
+	.nick )
+		tizio=`echo $string | cut --delimiter=' ' --fields=2`
+		echo "NICK $tizio" >>./pippo
+		;;
+	.part )
+
+		temp=`echo $string |cut --delimiter=' ' --fields=2-`
+                echo "PART $curchannel :$temp" >>./pippo
+		curchannel=''
+                ;;
+
+	.op )
+                if [ -z "$curchannel" ]
+		then
+			echo "you are not joined to any channel"
+		else
+			tizio=`echo $string | cut --delimiter=' ' --fields=2`
+			echo "MODE $curchannel +o $tizio" >>./pippo
+		fi
+		;;
+        .deop )
+                if [ -z "$curchannel" ]
+                then
+                        echo "you are not joined to any channel"
+                else
+                        tizio=`echo $string | cut --delimiter=' ' --fields=2`
+                        echo "MODE $curchannel -o $tizio" >>./pippo
+                fi
+		;;
+        .mode )
+                if [ -z "$curchannel" ]
+                then
+                        echo "you are not joined to any channel"
+                else
+                        tizio=`echo $string | cut --delimiter=' ' --fields=2`
+                        echo "MODE $curchannel $tizio" >>./pippo
+                fi
+		;;
+	.topic )
+           	if [ -z "$curchannel" ]
+                then
+                        echo "you are not joined to any channel"
+                else
+			testo=`echo $string |cut --delimiter=' ' --fields=2-`
+                        echo "TOPIC $curchannel $testo" >>./pippo
+                fi
+                ;;
+	.kick )
+		if [ -z "$curchannel" ]
+                then
+                        echo "you are not joined to any channel"
+                else
+			tizio=`echo $string | cut --delimiter=' ' --fields=2`
+			testo=`echo $string |cut --delimiter=' ' --fields=3-`
+                echo "KICK $curchannel $tizio :$testo" >>./pippo
+		fi
+		;;
+	.ban )
+                if [ -z "$curchannel" ]
+                then
+                        echo "you are not joined to any channel"
+                else
+                        tizio=`echo $string | cut --delimiter=' ' --fields=2`
+                echo "MODE $curchannel +b $tizio" >>./pippo
+                fi
+		;;
+	.unban )
+                if [ -z "$curchannel" ]
+                then
+                        echo "you are not joined to any channel"
+                else
+                        tizio=`echo $string | cut --delimiter=' ' --fields=2`
+                echo "MODE $curchannel -b $tizio" >>./pippo
+                fi
+		;;
+
+	.raw )
+		testo=`echo $string |cut --delimiter=' ' --fields=2-`
+                echo "$testo" >>./pippo
+                ;;
+
+	.help )
+		echo "Commands available:"
+		echo ".join    .quit    .tell   .nick"
+		echo ".op      .deop    .part   .mode"
+		echo ".topic   .raw     .kick   .ban"
+		echo ".unban"
+		echo ""
+		echo "without any commands what you type go to channel"
+		;;
+	* )
+		if [ -z "$curchannel" ]
+		then
+			echo "you are not joined to any channel"
+		else
+			echo "PRIVMSG $curchannel :$string" >>./pippo  
+		fi
+		;;
+esac
+fi
+ 
+done
+
